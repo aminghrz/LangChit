@@ -1,0 +1,8 @@
+streamlit
+streamlit-authenticator
+langgraph
+langchain-core
+langchain-openai
+langmem
+sqlite-vec
+openai
