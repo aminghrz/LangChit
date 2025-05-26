@@ -2,8 +2,8 @@
 
 A full-featured Streamlit chat application powered by LangGraph with persistent memory capabilities and user authentication.
 
-![Chat Interface](1.png)
-![Chat Interface](2.png)
+![Chat Interface](/img/1.png)
+![Chat Interface](/img/2.png)
 
 ## Overview
 
