@@ -40,6 +40,12 @@ This is a general-purpose Streamlit chat interface for serving LangGraph agents 
 - Streaming responses
 - Dynamic UI updates
 
+### 🔑 **User API Key & Endpoint Management**
+- Each user can securely enter their own API key and Base URL for any OpenAI-compatible provider
+- Credentials are stored only once per user in the same SQLite database as the store and checkpointer
+- Enables flexible use of different LLM providers per user
+
+
 ## Architecture
 
 The application uses a LangGraph workflow with the following components:
