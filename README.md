@@ -108,6 +108,8 @@ The LangGraph workflow can be easily modified in the graph definition section. K
 - `summarize_conversation()`: Summary generation logic
 - `should_continue()`: Conditional logic for triggering summarization
 
+You can add your nodes, tools, conditional edges and graph (workflow) in functions.py in a section dedicated to this.
+
 ## Usage
 
 1. **Login**: Use the sidebar authentication
