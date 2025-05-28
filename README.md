@@ -7,7 +7,7 @@ A full-featured Streamlit chat application powered by LangGraph with persistent 
 
 ## Overview
 
-This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management. The graph architecture can be easily modified or replaced with your custom implementation, making it perfect for testing or providing chat services.
+This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management. The graph architecture can be easily modified or replaced with <b><u>YOUR CUSTOM IMPLEMENTATION</u></b> , making it perfect for testing or providing chat services.
 
 ## Features
 
@@ -109,6 +109,7 @@ The LangGraph workflow can be easily modified in the graph definition section. K
 - `should_continue()`: Conditional logic for triggering summarization
 
 You can add your nodes, tools, conditional edges and graph (workflow) in functions.py in a section dedicated to this.
+Just keep the logic, and you will be good to go.
 
 ## Usage
 
