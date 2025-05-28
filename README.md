@@ -7,7 +7,7 @@ A full-featured Streamlit chat application powered by LangGraph with persistent 
 
 ## Overview
 
-This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management. The graph architecture can be easily modified or replaced with <b><u>YOUR CUSTOM IMPLEMENTATION</u></b> , making it perfect for testing or providing chat services.
+This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management. The graph architecture can be easily modified or replaced with <ins>**YOUR CUSTOM IMPLEMENTATION**</ins> , making it perfect for testing or providing chat services.
 
 ## Features
 
