@@ -27,7 +27,7 @@ cred = {
     "credentials": {
     "usernames": {
     "AminGhz": {
-        "email": "amin.ghareyazi@gmail.com",
+        "email": "example@gmail.com",
         "failed_login_attempts": 0,
         "first_name": "Amin",
         "last_name": "Ghareyazi",
@@ -36,7 +36,7 @@ cred = {
         "roles": ["admin", "editor", "viewer"],
     },
     "mammad": {
-        "email": "ghareyazi.a@gmail.com",
+        "email": "example2@gmail.com",
         "failed_login_attempts": 0,
         "first_name": "Rebecca",
         "last_name": "Briggs",
