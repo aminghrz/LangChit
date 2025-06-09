@@ -4,5 +4,9 @@ langgraph
 langchain-core
 langchain-openai
 langmem
+sqlite3
 sqlite-vec
+sqlite_vec_store
 openai
+datetime
+yaml
