@@ -1,4 +1,4 @@
-# LangGraph Streamlit UI with Persistent Memory
+# Customizable LangGraph Streamlit UI with Persistent Memory
 
 A full-featured Streamlit chat application powered by LangGraph with persistent memory capabilities and user authentication.
 
@@ -29,6 +29,7 @@ This is a general-purpose Streamlit chat interface for serving LangGraph agents 
 - Built-in authentication system
 - User-specific thread access
 - Secure session management
+- Sign-up for new users
 
 ### 💬 **Thread Management**
 - Multiple conversation threads per user
@@ -68,22 +69,21 @@ cd langgraph_streamlit_UI
 pip install -r requirements.txt
 ```
 
-3. Set up your OpenAI API key:
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-```
+3. Add [SqliteVecStore](https://github.com/aminghrz/langmem-sqlite-vec) to your directory.
 
 4. Run the application:
 ```bash
 streamlit run app.py
 ```
 
-## Configuration
+5. Set up your OpenAI API key:
+Insert your OpenAI compatible API endpoint token and URL after sign-up/sign-in.
 
-### Authentication Setup
-The current implementation includes hardcoded credentials for demonstration. For production use:
+You're all set!
 
-1. Create a `config.yaml` file:
+## Authentication Setup
+
+Create a `config.yaml` file containing your users information in the format below:
 ```yaml
 credentials:
   usernames:
@@ -91,15 +91,14 @@ credentials:
       email: your_email@example.com
       first_name: Your
       last_name: Name
-      password: your_hashed_password
+      password: pass
       roles: [admin, editor, viewer]
 cookie:
   expiry_days: 30
   key: your_secret_key
   name: your_cookie_name
 ```
-
-2. Update the authentication section to load from the YAML file.
+Remember that passwords will be hashed everytime the user information is saved. You can change the password in .yaml file anytime you want.
 
 ### Graph Customization
 The LangGraph workflow can be easily modified in the graph definition section. Key components:
@@ -114,10 +113,11 @@ Just keep the logic, and you will be good to go.
 ## Usage
 
 1. **Login**: Use the sidebar authentication
-2. **Create Thread**: Click "➕ New Thread" to start a new conversation
-3. **Switch Threads**: Select from existing threads in the dropdown
-4. **Chat**: Type messages in the chat input
-5. **View Summary**: Expand the conversation summary when available
+2. **Sign-up**: Sign-up using the widget in first page.
+3. **Create Thread**: Click "➕ New Thread" to start a new conversation
+4. **Switch Threads**: Select from existing threads in the dropdown
+5. **Chat**: Type messages in the chat input
+6. **View Summary**: Expand the conversation summary when available
 
 ## Dependencies
 
@@ -126,14 +126,10 @@ Just keep the logic, and you will be good to go.
 - `langchain-openai`: OpenAI integration
 - `langmem`: Memory management tools
 - `streamlit-authenticator`: User authentication
-- `sqlite-vec`: Vector storage (via SqliteVecStore)
+- `sqlite-vec`: Vector storage (For SqliteVecStore)
+- [`SqliteVecStore`](https://github.com/aminghrz/langmem-sqlite-vec): For persistant log-term memory.
 
 ## ⚠️ Important Warnings
-
-### Security
-- **Move authentication credentials to a secure YAML file** - The current hardcoded credentials are for demonstration only
-- Use proper password hashing in production
-- Implement proper session management
 
 ### Scalability
 - **This is not production-ready for heavy loads**
@@ -145,7 +141,7 @@ Just keep the logic, and you will be good to go.
   - Error handling and logging
 
 ### Performance
-- Monitor token usage with long conversations
+- Monitor token usage with long conversations (Use [LangFuse](https://langfuse.com/))
 - Consider adjusting summary triggers based on your use case
 - Implement rate limiting for production use
 
