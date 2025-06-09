@@ -23,35 +23,8 @@ if "settings_db_initialized" not in st.session_state:
     st.session_state.settings_db_initialized = True
 
 ########################### Authentication ################################
-cred = {
-    "credentials": {
-    "usernames": {
-    "AminGhz": {
-        "email": "example@gmail.com",
-        "failed_login_attempts": 0,
-        "first_name": "Amin",
-        "last_name": "Ghareyazi",
-        "logged_in": False,
-        "password": "amin123",
-        "roles": ["admin", "editor", "viewer"],
-    },
-    "mammad": {
-        "email": "example2@gmail.com",
-        "failed_login_attempts": 0,
-        "first_name": "Rebecca",
-        "last_name": "Briggs",
-        "logged_in": False,
-        "password": "def",
-        "roles": ["viewer"],
-    },
-    }
-    },
-    "cookie": {
-    "expiry_days": 0,
-    "key": '42',
-    "name": "ahmad"
-    }
-}
+with open('config.yaml', 'r', encoding='utf-8') as file:
+    cred = yaml.load(file, Loader=SafeLoader)
 
 # Creating the authenticator object
 authenticator = stauth.Authenticate(
@@ -66,15 +39,19 @@ if st.session_state["authentication_status"] is False:
 elif st.session_state["authentication_status"] is None:
     try:
         authenticator.login(location = "sidebar",clear_on_submit = True)
+        (email_of_registered_user,
+        username_of_registered_user,
+        name_of_registered_user) = authenticator.register_user(location='main',roles=['viewer'],)
+        if email_of_registered_user:
+            with open('config.yaml', 'w', encoding='utf-8') as file:
+                yaml.dump(cred, file, default_flow_style=False)
+            st.success('User registered successfully! Please sign in using sidebar sign-in widget.')
     except LoginError as e:
         st.error(e)
     st.warning('Please enter your username and password')
     if st.session_state["authentication_status"]:
         st.rerun()
 ########################### Authentication ################################
-
-elif st.session_state["authentication_status"]:
-    st.sidebar.write(f'Welcome *{st.session_state["name"]}*',)
 
     ########################### User API Settings ################################    
     # Load existing settings for the user
