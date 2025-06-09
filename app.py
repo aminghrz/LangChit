@@ -51,6 +51,8 @@ elif st.session_state["authentication_status"] is None:
     st.warning('Please enter your username and password')
     if st.session_state["authentication_status"]:
         st.rerun()
+elif st.session_state["authentication_status"]:
+    st.sidebar.write(f'Welcome *{st.session_state["name"]}*',)
 ########################### Authentication ################################
 
     ########################### User API Settings ################################    
