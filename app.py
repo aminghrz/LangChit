@@ -13,7 +13,8 @@ from functions import (
     get_thread_ids,
     load_messages_for_thread
 )
-
+import yaml
+from yaml.loader import SafeLoader
 
 st.set_page_config(layout="wide", page_title="LangGraph Chat Agent")
 
