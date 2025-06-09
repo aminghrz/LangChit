@@ -1,4 +1,4 @@
-# Customizable LangGraph Streamlit UI with Persistent Memory
+# Customizable and portable LangGraph Streamlit UI with Persistent Memory
 
 A full-featured Streamlit chat application powered by LangGraph with persistent memory capabilities and user authentication.
 
