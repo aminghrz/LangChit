@@ -75,9 +75,10 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py
 ```
+5. Sign-up and/or sign-in using the widgets.
 
-5. Set up your OpenAI API key:
-Insert your OpenAI compatible API endpoint token and URL after sign-up/sign-in.
+6. Set up your OpenAI API key:  
+Only one time, insert your OpenAI compatible API endpoint token and URL after sign-up/sign-in in the sidebar widget. Change anytime you want.
 
 You're all set!
 
