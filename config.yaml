@@ -1,0 +1,17 @@
+cookie:
+  expiry_days: 0
+  key: '42'
+  name: session_ended
+credentials:
+  usernames:
+    aminghz:
+      email: ghareyazi.a@gmail.com
+      failed_login_attempts: 0
+      first_name: Amin
+      last_name: Ghareyazi
+      logged_in: false
+      password: amin
+      roles:
+      - admin
+      - editor
+      - viewer
