@@ -6,7 +6,7 @@ from langchain_openai import OpenAIEmbeddings
 from sqlite_vec_store import SqliteVecStore  
 from langchain_core.messages import AIMessage, HumanMessage
 from datetime import datetime
-from functions import (
+from app_functions import (
     init_user_settings_db,
     save_user_settings,
     load_user_settings,
@@ -109,7 +109,7 @@ elif st.session_state["authentication_status"]:
         st.stop()
 
         # Import the new function
-    from functions import create_graph
+    from graph import create_graph
     
     # Initialize session state variables
     if "conn" not in st.session_state:
