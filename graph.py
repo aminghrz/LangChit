@@ -91,13 +91,13 @@ def should_continue(state) -> Literal["summarize_conversation", END]:
         return "summarize_conversation"
     return END
 
-def create_graph(api_key, base_url, conn, store, user_id):
+def create_graph(model, api_key, base_url, conn, store, user_id):
     """Create and compile the LangGraph workflow"""
     
     # Initialize models
     chat_model = ChatOpenAI(
         temperature=0,
-        model='gpt-4.1',
+        model= model,
         api_key=api_key,
         base_url=base_url
     )

@@ -15,6 +15,7 @@ from app_functions import (
 )
 import yaml
 from yaml.loader import SafeLoader
+from openai import OpenAI
 
 st.set_page_config(layout="wide", page_title="LangGraph Chat Agent")
 
@@ -54,19 +55,41 @@ elif st.session_state["authentication_status"] is None:
         st.rerun()
 elif st.session_state["authentication_status"]:
     st.sidebar.write(f'Welcome *{st.session_state["name"]}*',)
+    authenticator.logout(location='sidebar')
 ########################### Authentication ################################
 
     ########################### User API Settings ################################    
-    # Load existing settings for the user
     if "user_api_settings" not in st.session_state:
         st.session_state.user_api_settings = load_user_settings(db="chatbot.sqlite3", username=st.session_state["username"])
-    
-    # Check if settings are already configured
-    settings_configured = bool(st.session_state.user_api_settings.get("api_key") and st.session_state.user_api_settings.get("base_url"))
-    
-    # Create expander - collapsed if settings are configured, expanded if not
+    settings_configured = bool(
+        st.session_state.user_api_settings.get("api_key") and st.session_state.user_api_settings.get("base_url")
+    )
+
+    @st.cache_resource
+    def get_openai_client(api_key, base_url):
+        """Caches the OpenAI client to avoid re-initializing on every rerun."""
+        try:
+            client = OpenAI(api_key=api_key, base_url=base_url)
+            return client
+        except Exception as e:
+            # We show error when called, but get_openai_client should return None so downstream knows.
+            st.error(f"Failed to initialize OpenAI client: {e}")
+            return None
+
+    # Cache the model-list fetch so that repeated calls with same args don't refetch.
+    @st.cache_data(show_spinner=False)
+    def fetch_model_list(api_key, base_url):
+        """Fetch model IDs once per unique (api_key, base_url)."""
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        models = client.models.list()
+        # Depending on your client library: ensure models.data exists
+        if getattr(models, "data", None):
+            return [m.id for m in models.data]
+        else:
+            return []
+
     with st.sidebar.expander("🔧 API Settings", expanded=not settings_configured):
-        # API Key input
+        # Text inputs for API key and Base URL
         api_key_input = st.text_input(
             "API Key:",
             value=st.session_state.user_api_settings.get("api_key", ""),
@@ -74,32 +97,100 @@ elif st.session_state["authentication_status"]:
             help="Enter your API key",
             key="api_key_input"
         )
-        
-        # Base URL input
         base_url_input = st.text_input(
             "Base URL:",
             value=st.session_state.user_api_settings.get("base_url", ""),
-            help="Enter the base URL for the API",
             placeholder="https://api.example.com/v1",
+            help="Enter the base URL for the API",
             key="base_url_input"
         )
-        
+
+        # Determine which values to use (prefer fresh inputs if non-empty)
+        effective_api_key = api_key_input.strip() or st.session_state.user_api_settings.get("api_key", "").strip()
+        effective_base_url = base_url_input.strip() or st.session_state.user_api_settings.get("base_url", "").strip()
+
+        # Initialize client if possible
+        if effective_api_key and effective_base_url:
+            client = get_openai_client(effective_api_key, effective_base_url)
+        else:
+            client = None
+            st.warning("Enter both API Key and Base URL to initialize client")
+
+        # --- Manage session_state for model list caching per credential ---
+        # If credentials changed since last fetch, clear stored model list & selection:
+        prev_key = st.session_state.get("__api_key_for_models")
+        prev_url = st.session_state.get("__base_url_for_models")
+        if (effective_api_key and effective_base_url) and (effective_api_key != prev_key or effective_base_url != prev_url):
+            # Credentials changed: clear previous model list & selection
+            st.session_state["model_ids"] = []
+            if "selected_model" in st.session_state:
+                del st.session_state["selected_model"]
+            st.session_state["__api_key_for_models"] = effective_api_key
+            st.session_state["__base_url_for_models"] = effective_base_url
+
+        # Initialize model_ids in session_state if not existing
+        if "model_ids" not in st.session_state:
+            st.session_state["model_ids"] = []
+
+        # Only fetch if client is available AND we have not fetched yet
+        if client:
+            if not st.session_state["model_ids"]:
+                # show spinner while fetching
+                with st.spinner("Fetching available models..."):
+                    try:
+                        ids = fetch_model_list(effective_api_key, effective_base_url)
+                        if ids:
+                            st.session_state["model_ids"] = ids
+                        else:
+                            # Could be empty list: warn user
+                            st.warning("No models returned by the API endpoint.")
+                    except Exception as e:
+                        st.error(f"Error fetching models: {e}")
+                        # Leave model_ids empty so user can try again later
+            # After attempted fetch, if we have model_ids, show dropdown
+            if st.session_state["model_ids"]:
+                model_ids = st.session_state["model_ids"]
+                # Determine default index if already selected
+                default_idx = 0
+                if ("selected_model" in st.session_state and
+                        st.session_state.selected_model in model_ids):
+                    default_idx = model_ids.index(st.session_state.selected_model)
+                st.selectbox(
+                    "Choose a model:",
+                    options=model_ids,
+                    index=default_idx,
+                    key="selected_model",
+                    help="Select an available model from your endpoint"
+                )
+            else:
+                # model_ids is empty after fetch attempt
+                st.info("No available models to choose. Check your API settings or the endpoint.")
+        else:
+            # client is None
+            st.warning("OpenAI client could not be initialized. Please check API key & Base URL.")
+
         # Save settings button
         if st.button("💾 Save API Settings"):
             if api_key_input.strip() and base_url_input.strip():
-                save_user_settings(db="chatbot.sqlite3", username=st.session_state["username"], api_key=api_key_input.strip(), base_url=base_url_input.strip())
-                st.session_state.user_api_settings = {"api_key": api_key_input.strip(), "base_url": base_url_input.strip()}
+                save_user_settings(
+                    db="chatbot.sqlite3",
+                    username=st.session_state["username"],
+                    api_key=api_key_input.strip(),
+                    base_url=base_url_input.strip()
+                )
+                st.session_state.user_api_settings = {
+                    "api_key": api_key_input.strip(),
+                    "base_url": base_url_input.strip()
+                }
                 st.success("API settings saved successfully!")
                 st.rerun()
             else:
                 st.error("Please fill in both API Key and Base URL")
-    
-    # Display current settings status outside the expander
+    # Outside the expander, show a warning if not yet configured
     if not settings_configured:
         st.sidebar.warning("⚠️ Please configure your API settings")
     ########################### End User API Settings ################################
 
-    authenticator.logout(location='sidebar')
 
     st.session_state.user_id = st.session_state["username"]
 
@@ -108,8 +199,6 @@ elif st.session_state["authentication_status"]:
         st.warning("⚠️ Please configure your API settings in the sidebar before using the chat.")
         st.stop()
 
-        # Import the new function
-    from graph import create_graph
     
     # Initialize session state variables
     if "conn" not in st.session_state:
@@ -128,10 +217,12 @@ elif st.session_state["authentication_status"]:
                 "embed": embedding_model,
             }
         )
-    
+
+    from graph import create_graph
     # Create graph if not exists or if API settings changed
     if "app" not in st.session_state or "last_api_settings" not in st.session_state or st.session_state.last_api_settings != st.session_state.user_api_settings:
         st.session_state.app, st.session_state.checkpointer = create_graph(
+            model=st.session_state.selected_model,
             api_key=st.session_state.user_api_settings["api_key"],
             base_url=st.session_state.user_api_settings["base_url"],
             conn=st.session_state.conn,

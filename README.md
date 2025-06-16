@@ -45,6 +45,7 @@ This is a general-purpose Streamlit chat interface for serving LangGraph agents 
 - Each user can securely enter their own API key and Base URL for any OpenAI-compatible provider
 - Credentials are stored only once per user in the same SQLite database as the store and checkpointer
 - Enables flexible use of different LLM providers per user
+- API provider model selection
 
 
 ## Architecture
