@@ -24,7 +24,7 @@ if "settings_db_initialized" not in st.session_state:
     init_user_settings_db(db="chatbot.sqlite3")
     st.session_state.settings_db_initialized = True
 
-########################### Authentication ################################
+########################### Start of Authentication ################################
 with open('config.yaml', 'r', encoding='utf-8') as file:
     cred = yaml.load(file, Loader=SafeLoader)
 
@@ -56,13 +56,15 @@ elif st.session_state["authentication_status"] is None:
 elif st.session_state["authentication_status"]:
     st.sidebar.write(f'Welcome *{st.session_state["name"]}*',)
     authenticator.logout(location='sidebar')
-########################### Authentication ################################
+########################### End of Authentication ################################
 
-    ########################### User API Settings ################################    
+    ########################### Start of User API Settings ################################    
     if "user_api_settings" not in st.session_state:
         st.session_state.user_api_settings = load_user_settings(db="chatbot.sqlite3", username=st.session_state["username"])
     settings_configured = bool(
-        st.session_state.user_api_settings.get("api_key") and st.session_state.user_api_settings.get("base_url")
+        st.session_state.user_api_settings.get("api_key") and
+        st.session_state.user_api_settings.get("base_url") and 
+        st.session_state.user_api_settings.get("model")
     )
 
     @st.cache_resource
@@ -152,8 +154,9 @@ elif st.session_state["authentication_status"]:
                 model_ids = st.session_state["model_ids"]
                 # Determine default index if already selected
                 default_idx = 0
-                if ("selected_model" in st.session_state and
-                        st.session_state.selected_model in model_ids):
+                if st.session_state.user_api_settings["model"]:
+                    default_idx = model_ids.index(st.session_state.user_api_settings["model"])
+                if ("selected_model" in st.session_state and st.session_state.selected_model in model_ids):
                     default_idx = model_ids.index(st.session_state.selected_model)
                 st.selectbox(
                     "Choose a model:",
@@ -176,11 +179,13 @@ elif st.session_state["authentication_status"]:
                     db="chatbot.sqlite3",
                     username=st.session_state["username"],
                     api_key=api_key_input.strip(),
-                    base_url=base_url_input.strip()
+                    base_url=base_url_input.strip(),
+                    model=st.session_state.selected_model
                 )
                 st.session_state.user_api_settings = {
                     "api_key": api_key_input.strip(),
-                    "base_url": base_url_input.strip()
+                    "base_url": base_url_input.strip(),
+                    "model": st.session_state.selected_model
                 }
                 st.success("API settings saved successfully!")
                 st.rerun()
@@ -189,7 +194,7 @@ elif st.session_state["authentication_status"]:
     # Outside the expander, show a warning if not yet configured
     if not settings_configured:
         st.sidebar.warning("⚠️ Please configure your API settings")
-    ########################### End User API Settings ################################
+    ########################### End of User API Settings ################################
 
 
     st.session_state.user_id = st.session_state["username"]
@@ -222,7 +227,7 @@ elif st.session_state["authentication_status"]:
     # Create graph if not exists or if API settings changed
     if "app" not in st.session_state or "last_api_settings" not in st.session_state or st.session_state.last_api_settings != st.session_state.user_api_settings:
         st.session_state.app, st.session_state.checkpointer = create_graph(
-            model=st.session_state.selected_model,
+            model=st.session_state.user_api_settings["model"],
             api_key=st.session_state.user_api_settings["api_key"],
             base_url=st.session_state.user_api_settings["base_url"],
             conn=st.session_state.conn,
