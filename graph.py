@@ -6,6 +6,10 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langmem import create_manage_memory_tool, create_search_memory_tool
+from langchain_core.tools import tool
+from datetime import datetime
+import streamlit as st
+from ddgs import DDGS
 
 # Add State class definition
 class State(MessagesState):
@@ -83,7 +87,7 @@ def summarize_conversation(state,chat_model):
         response = chat_model.invoke(messages_for_summary_llm)
         return {"summary": response.content, "messages": []}
 
-def should_continue(state) -> Literal["summarize_conversation", END]:
+def should_continue(state) -> Literal["summarize_conversation", END]: # type: ignore
     messages = state["messages"]
     # Trigger summary if there are more than 6 messages (e.g., 3 user, 3 AI + 1 new user = 7 messages)
     # The summarization will happen *after* the AI responds to the current user message.
@@ -91,26 +95,91 @@ def should_continue(state) -> Literal["summarize_conversation", END]:
         return "summarize_conversation"
     return END
 
-def create_graph(model, api_key, base_url, conn, store, user_id):
+def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enabled=False, search_method_rag=True, num_results=5):
     """Create and compile the LangGraph workflow"""
     
     # Initialize models
     chat_model = ChatOpenAI(
         temperature=0,
-        model= model,
+        model=model,
         api_key=api_key,
         base_url=base_url
     )
     
-    # Create tools
-    manage_memory_tool = create_manage_memory_tool(store=store, namespace=("memory","{user_id}"), instructions="Store any interests and topics the user talks about.")
-    search_memory_tool = create_search_memory_tool(store=store, namespace=("memory","{user_id}"), instructions="Recall any interests and topics the user talks about.")
+    # Create web search tool
+    @tool
+    def search_web(query: str) -> str:
+        """Search the web for information about a topic.
+        
+        Args:
+            query: The search query
+            
+        Returns:
+            Search results from the web
+        """
+        results = DDGS().text(query,max_results=num_results)
+        timestamp = datetime.now().isoformat()
+        search_namespace = ("web_search", user_id)
+
+        for i, result in enumerate(results):
+            key = f"{query}_{timestamp}_{i}"
+            value = {
+                "query": query,
+                "title": result.get("title", ""),
+                "href": result.get("href", ""),
+                "body": result.get("body", ""),
+                "timestamp": timestamp,
+                "text": f"{result.get('title', '')} {result.get('body', '')}"
+            }
+            
+            # Store with indexing for vector search
+            store.put(
+                namespace=search_namespace,
+                key=key,
+                value=value,
+                index=["text"]  # Index the text field for vector search
+            )
+        if search_method_rag:
+            final_results = store.search(
+            search_namespace,
+            query=query,
+            limit=1
+            )
+        else:
+            final_results = results
+
+        return final_results
+    
+    # Create memory tools
+    manage_memory_tool = create_manage_memory_tool(
+        store=store, 
+        namespace=("memory", user_id), 
+        instructions="Store any interests and topics the user talks about."
+    )
+    search_memory_tool = create_search_memory_tool(
+        store=store, 
+        namespace=("memory", user_id), 
+        instructions="Recall any interests and topics the user talks about."
+    )
+    
+    # Build tools list
+    tools = [manage_memory_tool, search_memory_tool]
+    if web_search_enabled:
+        tools.append(search_web)
+    
+    # Update the prompt based on web search availability
+    prompt_content = (
+        "You are a helpful assistant. Respond to the user's last message based on the provided context and conversation history and memories. "
+        "Store any interests and topics the user talks about."
+    )
+    if web_search_enabled:
+        prompt_content += " You can search the web for current information when needed or when the user requests it using the search_web tool."
     
     # Create react agent
     react_agent_executor = create_react_agent(
         model=chat_model,
-        tools=[manage_memory_tool, search_memory_tool],
-        prompt=SystemMessage("You are a helpful assistant. Respond to the user's last message based on the provided context and conversation history and memories. Store any interests and topics the user talks about."),
+        tools=tools,
+        prompt=SystemMessage(prompt_content),
         store=store
     )
     

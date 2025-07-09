@@ -18,7 +18,13 @@ from yaml.loader import SafeLoader
 from openai import OpenAI
 
 st.set_page_config(layout="wide", page_title="LangGraph Chat Agent")
-
+st.markdown("""
+<style>
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
 # Initialize user settings database
 if "settings_db_initialized" not in st.session_state:
     init_user_settings_db(db="chatbot.sqlite3")
@@ -196,6 +202,63 @@ elif st.session_state["authentication_status"]:
         st.sidebar.warning("⚠️ Please configure your API settings")
     ########################### End of User API Settings ################################
 
+    ########################### Start of Web Search Settings ################################
+    with st.sidebar.expander("🔍 Web Search Settings", expanded=False):
+        # Web search toggle
+        web_search_enabled = st.checkbox(
+            "Enable Web Search",
+            value=st.session_state.get("web_search_enabled", False),
+            help="Allow the assistant to search the web for current information"
+        )
+        
+        # Show additional options only if web search is enabled
+        if web_search_enabled:
+            # Search method radio buttons
+            search_method = st.radio(
+                "Search Method:",
+                options=["RAG", "Direct"],
+                index=0 if st.session_state.get("search_method_rag", True) else 1,
+                help="RAG: Use vector search on results\nDirect: Pass full results to LLM"
+            )
+            
+            # Number of results slider
+            num_results = st.slider(
+                "Number of Results:",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.get("num_results", 5),
+                help="Number of web search results to retrieve"
+            )
+            
+            # Update session state
+            st.session_state.web_search_enabled = web_search_enabled
+            st.session_state.search_method_rag = (search_method == "RAG")
+            st.session_state.num_results = num_results
+        else:
+            # Disable web search
+            st.session_state.web_search_enabled = False
+            st.session_state.search_method_rag = True
+            st.session_state.num_results = 5
+
+    # Check if web search settings changed
+    web_search_settings_changed = False
+    if "last_web_search_settings" in st.session_state:
+        current_settings = {
+            "enabled": st.session_state.web_search_enabled,
+            "rag": st.session_state.search_method_rag,
+            "num_results": st.session_state.num_results
+        }
+        if st.session_state.last_web_search_settings != current_settings:
+            web_search_settings_changed = True
+            st.session_state.last_web_search_settings = current_settings
+    else:
+        st.session_state.last_web_search_settings = {
+            "enabled": st.session_state.web_search_enabled,
+            "rag": st.session_state.search_method_rag,
+            "num_results": st.session_state.num_results
+        }
+    ########################### End of Web Search Settings ################################
+
 
     st.session_state.user_id = st.session_state["username"]
 
@@ -225,17 +288,24 @@ elif st.session_state["authentication_status"]:
 
     from graph import create_graph
     # Create graph if not exists or if API settings changed
-    if "app" not in st.session_state or "last_api_settings" not in st.session_state or st.session_state.last_api_settings != st.session_state.user_api_settings:
+    if  "app" not in st.session_state or \
+        "last_api_settings" not in st.session_state or \
+        st.session_state.last_api_settings != st.session_state.user_api_settings or \
+        web_search_settings_changed:
+
         st.session_state.app, st.session_state.checkpointer = create_graph(
             model=st.session_state.user_api_settings["model"],
             api_key=st.session_state.user_api_settings["api_key"],
             base_url=st.session_state.user_api_settings["base_url"],
             conn=st.session_state.conn,
             store=st.session_state.store,
-            user_id=st.session_state.user_id
+            user_id=st.session_state.user_id,
+            web_search_enabled=st.session_state.get("web_search_enabled", False),
+            search_method_rag=st.session_state.get("search_method_rag", True),
+            num_results=st.session_state.get("num_results", 5)
         )
         st.session_state.last_api_settings = st.session_state.user_api_settings.copy()
-        st.info("LangGraph app compiled and checkpointer initialized.")
+        st.info("LangGraph app compiled with updated settings.")
     
 
     if "thread_id" not in st.session_state:
@@ -327,16 +397,52 @@ elif st.session_state["authentication_status"]:
                 st.markdown(prompt)
 
             graph_input = {"messages": [HumanMessage(content=prompt)]}
-            agent_config = {"configurable": {"thread_id": st.session_state.thread_id ,"user_id": st.session_state.user_id}}
+            agent_config = {"configurable": {"thread_id": st.session_state.thread_id, "user_id": st.session_state.user_id}}
 
-            with st.spinner("AI is thinking..."):
+            with st.status("Processing your request...", expanded=True) as status:
                 try:
-                    # Stream events from the graph
-                    # We don't need to iterate through events if we're just reloading state after
-                    for _ in st.session_state.app.stream(graph_input, config=agent_config):
-                        pass # Consume the stream
+                    step_logs = []
+                    
+                    for event in st.session_state.app.stream(graph_input, config=agent_config, stream_mode="updates"):
+                        if event:
+                            for node_name, node_data in event.items():
+                                if node_name == "conversation":
+                                    if "messages" in node_data:
+                                        last_message = node_data["messages"][-1] if node_data["messages"] else None
+                                        if last_message:
+                                            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                                                for tool_call in last_message.tool_calls:
+                                                    tool_name = tool_call.get('name', 'Unknown Tool')
+                                                    tool_args = tool_call.get('args', {})
+                                                    
+                                                    if 'search' in tool_name.lower():
+                                                        query = tool_args.get('query', 'information')
+                                                        log_msg = f"🔍 Searching web for: {query[:50]}..."
+                                                    elif 'memory' in tool_name.lower():
+                                                        if 'manage' in tool_name.lower():
+                                                            log_msg = "🧠 Storing information in memory"
+                                                        else:
+                                                            log_msg = "🧠 Retrieving from memory"
+                                                    else:
+                                                        log_msg = f"🔧 Using tool: {tool_name}"
+                                                    
+                                                    st.write(log_msg)
+                                                    step_logs.append(log_msg)
+                                            
+                                            elif hasattr(last_message, 'content') and last_message.content:
+                                                log_msg = "💭 Generating response..."
+                                                st.write(log_msg)
+                                                step_logs.append(log_msg)
+                                
+                                elif node_name == "summarize_conversation":
+                                    log_msg = "📝 Summarizing conversation"
+                                    st.write(log_msg)
+                                    step_logs.append(log_msg)
 
-                    # After invocation, reload the state to get AI's response and any summary
+                    # Update status to complete
+                    status.update(label="✅ Complete!", state="complete")
+                    
+                    # After invocation, reload the state
                     updated_lc_messages = load_messages_for_thread(st.session_state.thread_id, st.session_state.checkpointer)
                     st.session_state.display_messages = updated_lc_messages
 
@@ -345,9 +451,10 @@ elif st.session_state["authentication_status"]:
                         st.session_state.current_summary = state_data["channel_values"]["summary"]
 
                 except Exception as e:
+                    status.update(label="❌ Error occurred", state="error")
                     st.error(f"Error interacting with the agent: {e}")
                     import traceback
-                    st.error(traceback.format_exc()) # Print full traceback for debugging
+                    st.error(traceback.format_exc())
 
             st.rerun() 
 
