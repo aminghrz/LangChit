@@ -1,13 +1,14 @@
 # Customizable and portable LangGraph Streamlit UI with Persistent Memory
 
-A full-featured Streamlit chat application powered by LangGraph with persistent memory capabilities and user authentication.
+A full-featured Streamlit chat application powered by LangGraph with persistent memory capabilities, user authentication, and web search integration.
 
 ![Chat Interface](/img/1.png)
 ![Chat Interface](/img/2.png)
+![Chat Interface](/img/3.png)
 
 ## Overview
 
-This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management. The graph architecture can be easily modified or replaced with <ins>**YOUR CUSTOM IMPLEMENTATION**</ins> , making it perfect for testing or providing chat services.
+This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management and web search capabilities. The graph architecture can be easily modified or replaced with <ins>**YOUR CUSTOM IMPLEMENTATION**</ins>, making it perfect for testing or providing chat services.
 
 ## Features
 
@@ -47,15 +48,25 @@ This is a general-purpose Streamlit chat interface for serving LangGraph agents 
 - Enables flexible use of different LLM providers per user
 - API provider model selection
 
+### 🔍 **Web Search Integration** (NEW)
+- **Toggle Web Search**: Enable/disable web search functionality on demand
+- **DuckDuckGo Integration**: Privacy-focused web search using the `ddgs` library
+- **Dual Search Modes**:
+  - **RAG Mode**: Stores search results as embeddings and uses vector search to find the most relevant information
+  - **Direct Mode**: Passes all search results directly to the LLM for processing
+- **Configurable Results**: Adjustable number of search results (1-10) via slider
+- **Persistent Web Search Memory**: Search results are stored in a separate namespace (`web_search`) for future reference
+- **Dynamic Graph Rebuilding**: The agent graph automatically rebuilds when web search settings change
 
 ## Architecture
 
 The application uses a LangGraph workflow with the following components:
 
-- **ReAct Agent**: Handles conversation logic with memory tools
+- **ReAct Agent**: Handles conversation logic with memory and web search tools
 - **Memory Tools**: Powered by langmem for storing and retrieving user memories
+- **Web Search Tool**: DuckDuckGo integration for current information retrieval
 - **Summarization Node**: Automatically creates conversation summaries
-- **SQLite Persistence**: Dual storage for checkpoints and vector embeddings
+- **SQLite Persistence**: Triple storage for checkpoints, vector embeddings, and web search results
 
 ## Installation
 
@@ -78,8 +89,13 @@ streamlit run app.py
 ```
 5. Sign-up and/or sign-in using the widgets.
 
-6. Set up your OpenAI API key:  
+6. Set up your OpenAI API key: 
 Only one time, insert your OpenAI compatible API endpoint token and URL after sign-up/sign-in in the sidebar widget. Change anytime you want.
+
+7. Configure web search (optional):
+   - Toggle "Enable Web Search" in the sidebar
+   - Choose between RAG or Direct search methods
+   - Adjust the number of results with the slider
 
 You're all set!
 
@@ -108,18 +124,29 @@ The LangGraph workflow can be easily modified in the graph definition section. K
 - `call_model()`: Main conversation handler
 - `summarize_conversation()`: Summary generation logic
 - `should_continue()`: Conditional logic for triggering summarization
+- `search_web()`: Web search tool implementation
 
-You can add your nodes, tools, conditional edges and graph (workflow) in functions.py in a section dedicated to this.
+You can add your nodes, tools, conditional edges and graph (workflow) in graph.py.
 Just keep the logic, and you will be good to go.
 
 ## Usage
 
 1. **Login**: Use the sidebar authentication
-2. **Sign-up**: Sign-up using the widget in first page.
-3. **Create Thread**: Click "➕ New Thread" to start a new conversation
-4. **Switch Threads**: Select from existing threads in the dropdown
-5. **Chat**: Type messages in the chat input
-6. **View Summary**: Expand the conversation summary when available
+2. **Sign-up**: Sign-up using the widget in first page
+3. **Configure API**: Set your OpenAI-compatible API key and base URL
+4. **Enable Web Search** (optional): 
+   - Toggle web search in the sidebar
+   - Select RAG for semantic search or Direct for full results
+   - Set the number of results to retrieve
+5. **Create Thread**: Click "➕ New Thread" to start a new conversation
+6. **Switch Threads**: Select from existing threads in the dropdown
+7. **Chat**: Type messages in the chat input
+8. **View Summary**: Expand the conversation summary when available
+
+### Web Search Usage Examples
+- "Search the web for the latest news about AI"
+- "Who is currently the president of the USA?"
+- "Find information about climate change solutions"
 
 ## Dependencies
 
@@ -129,7 +156,8 @@ Just keep the logic, and you will be good to go.
 - `langmem`: Memory management tools
 - `streamlit-authenticator`: User authentication
 - `sqlite-vec`: Vector storage (For SqliteVecStore)
-- [`SqliteVecStore`](https://github.com/aminghrz/langmem-sqlite-vec): For persistant log-term memory.
+- `ddgs`: DuckDuckGo search integration
+- [`SqliteVecStore`](https://github.com/aminghrz/langmem-sqlite-vec): For persistent long-term memory
 
 ## ⚠️ Important Warnings
 
@@ -146,6 +174,7 @@ Just keep the logic, and you will be good to go.
 - Monitor token usage with long conversations (Use [LangFuse](https://langfuse.com/))
 - Consider adjusting summary triggers based on your use case
 - Implement rate limiting for production use
+- Web search results add to token consumption - use RAG mode for efficiency
 
 ## Contributing
 
