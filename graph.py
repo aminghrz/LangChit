@@ -159,7 +159,7 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
     search_memory_tool = create_search_memory_tool(
         store=store, 
         namespace=("memory", user_id), 
-        instructions="Recall any interests and topics the user talks about."
+        instructions="Search and recall stored information about the user, including their name, interests, preferences, and any topics they've discussed."
     )
     
     # Build tools list
@@ -169,8 +169,10 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
     
     # Update the prompt based on web search availability
     prompt_content = (
-        "You are a helpful assistant. Respond to the user's last message based on the provided context and conversation history and memories. "
-        "Store any interests and topics the user talks about."
+        "You are a helpful assistant with memory capabilities. "
+        "IMPORTANT: Before answering any question about the user or past conversations, "
+        "you MUST first use the search_memory tool to check if you have any stored information. "
+        "Store any new information about the user using the manage_memory tool. "
     )
     if web_search_enabled:
         prompt_content += " You can search the web for current information when needed or when the user requests it using the search_web tool."
