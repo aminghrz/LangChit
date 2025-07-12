@@ -108,18 +108,21 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
     
     # Create web search tool
     @tool
-    def search_web(query: str) -> str:
+    def search_web(query: str, timelimit: Literal["d", "w", "m", "y"] = "w") -> str:
         """Search the web for information about a topic.
         
         Args:
             query: The search query
-            
+            timelimit: Time limit - "d" (day), "w" (week), "m" (month), "y" (year)
+        
         Returns:
             Search results from the web
         """
-        results = DDGS().text(query,max_results=num_results)
+        results = DDGS().text(query, max_results=num_results,
+                            timelimit=timelimit,
+                            )
         timestamp = datetime.now().isoformat()
-        search_namespace = ("web_search", user_id)
+        namespace = ("web_search", user_id)
 
         for i, result in enumerate(results):
             key = f"{query}_{timestamp}_{i}"
@@ -131,17 +134,16 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
                 "timestamp": timestamp,
                 "text": f"{result.get('title', '')} {result.get('body', '')}"
             }
-            
             # Store with indexing for vector search
             store.put(
-                namespace=search_namespace,
+                namespace=namespace,
                 key=key,
                 value=value,
                 index=["text"]  # Index the text field for vector search
             )
         if search_method_rag:
             final_results = store.search(
-            search_namespace,
+            namespace,
             query=query,
             limit=1
             )
@@ -169,13 +171,13 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
     
     # Update the prompt based on web search availability
     prompt_content = (
-        "You are a helpful assistant with memory capabilities. "
+        "You are a helpful assistant with memory capabilities."
         "IMPORTANT: Before answering any question about the user or past conversations, "
         "you MUST first use the search_memory tool to check if you have any stored information. "
         "Store any new information about the user using the manage_memory tool. "
     )
     if web_search_enabled:
-        prompt_content += " You can search the web for current information when needed or when the user requests it using the search_web tool."
+        prompt_content += f"You can also search the web for current information when needed using the search_web tool. Decide on timelimit argument based on the query of the user. Try to get updated results based on current datetime which is {str(datetime.now())}"
     
     # Create react agent
     react_agent_executor = create_react_agent(
