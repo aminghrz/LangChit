@@ -27,8 +27,13 @@ h1, h2, h3, h4, h5, h6 {
 """, unsafe_allow_html=True)
 # Initialize user settings database
 if "settings_db_initialized" not in st.session_state:
-    init_user_settings_db(db="chatbot.sqlite3")
-    st.session_state.settings_db_initialized = True
+    try: 
+        init_user_settings_db(db="chatbot.sqlite3")
+        st.session_state.settings_db_initialized = True
+        st.session_state.db_initialization_time = datetime.now()
+    except Exception as e:
+        st.error(f"Database initialization failed: {e}")
+        st.session_state.db_init_error = str(e)
 
 ########################### Start of Authentication ################################
 with open('config.yaml', 'r', encoding='utf-8') as file:
@@ -43,7 +48,7 @@ authenticator = stauth.Authenticate(
 )
 
 if st.session_state["authentication_status"] is False:
- st.error('Username/password is incorrect')
+    st.error('Username/password is incorrect')
 elif st.session_state["authentication_status"] is None:
     try:
         authenticator.login(location = "sidebar",clear_on_submit = True)
