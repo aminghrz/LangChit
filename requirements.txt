@@ -8,3 +8,6 @@ langgraph
 langgraph.checkpoint.sqlite
 langmem
 ddgs
+requests
+beautifulsoup4
+readability‑lxml
