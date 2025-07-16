@@ -1,15 +1,18 @@
 from langchain_core.messages import AIMessage, SystemMessage, BaseMessage, HumanMessage
+from langchain_core.tools import tool
 from langgraph.graph import MessagesState, StateGraph, START, END
-from typing import Literal, List
-import streamlit as st
+from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
 from langmem import create_manage_memory_tool, create_search_memory_tool
-from langchain_core.tools import tool
-from datetime import datetime
+
+from typing import Literal, List, Dict
 import streamlit as st
+from datetime import datetime
 from ddgs import DDGS
+import requests
+from readability import Document
+from bs4 import BeautifulSoup
 
 # Add State class definition
 class State(MessagesState):
@@ -152,6 +155,34 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
 
         return final_results
     
+    @tool
+    def fetch_url_content(urls: List[str], timeout: int = 10) -> List[Dict[str, str]]:
+        """
+        Fetch and extract the main text and title from each URL.
+
+        Args:
+            urls: A list of page URLs to retrieve.
+            timeout: HTTP timeout in seconds.
+
+        Returns:
+            A list of dicts with keys: 'url', 'title', 'content'.
+        """
+        results = []
+        for url in urls:
+            try:
+                resp = requests.get(url, timeout=timeout)
+                resp.raise_for_status()
+                doc = Document(resp.text)
+                title = doc.title()
+                html = doc.summary()
+                soup = BeautifulSoup(html, 'html.parser')
+                text = soup.get_text(separator='\n').strip()
+                results.append({"url": url, "title": title, "content": text})
+            except Exception as e:
+                # Optionally include an error field:
+                results.append({"url": url, "error": str(e)})
+        return results
+
     # Create memory tools
     manage_memory_tool = create_manage_memory_tool(
         store=store, 
@@ -165,20 +196,29 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
     )
     
     # Build tools list
-    tools = [manage_memory_tool, search_memory_tool]
+    tools = [manage_memory_tool, search_memory_tool, fetch_url_content]
     if web_search_enabled:
         tools.append(search_web)
-    
-    # Update the prompt based on web search availability
+
+    # Base prompt
     prompt_content = (
-        "You are a helpful assistant with memory capabilities."
+        "You are a helpful assistant with memory capabilities. "
         "IMPORTANT: Before answering any question about the user or past conversations, "
         "you MUST first use the search_memory tool to check if you have any stored information. "
         "Store any new information about the user using the manage_memory tool. "
+        "When URLs are provided directly by the user, use the fetch_url_content tool "
+        "to retrieve full page contents so your answers can be grounded in that text."
     )
+
+    # Extend if web search is enabled
     if web_search_enabled:
-        prompt_content += f"You can also search the web for current information when needed using the search_web tool. Decide on timelimit argument based on the query of the user. Try to get updated results based on current datetime which is {str(datetime.now())}"
-    
+        prompt_content += (
+            " You can also search the web for current information when needed using the search_web tool. "
+            f"Decide on the timelimit argument based on the query of the user. Try to get updated results "
+            f"based on the current datetime (which is {datetime.now()}). "
+            "use the fetch_url_content tool to retrieve full page contents if you need to get more information a single or multiple pages from the web pages you got from web search results"
+        )
+
     # Create react agent
     react_agent_executor = create_react_agent(
         model=chat_model,
