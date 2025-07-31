@@ -6,7 +6,8 @@ __pycache__/
 # C extensions
 *.so
 *.sqlite3*
-
+*.ipynb
+*.code-workspace
 # Distribution / packaging
 .Python
 build/
