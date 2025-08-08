@@ -1,5 +1,5 @@
 cookie:
-  expiry_days: 0
+  expiry_days: 1
   key: '42'
   name: session_ended
 credentials:

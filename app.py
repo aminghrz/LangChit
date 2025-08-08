@@ -6,6 +6,10 @@ from langchain_openai import OpenAIEmbeddings
 from sqlite_vec_store import SqliteVecStore  
 from langchain_core.messages import AIMessage, HumanMessage
 from datetime import datetime
+import yaml
+from yaml.loader import SafeLoader
+from openai import OpenAI
+
 from app_functions import (
     init_user_settings_db,
     save_user_settings,
@@ -13,10 +17,7 @@ from app_functions import (
     get_thread_ids,
     load_messages_for_thread
 )
-import yaml
-from yaml.loader import SafeLoader
-from openai import OpenAI
-
+st.title("🦾🤖 LangChit")
 st.set_page_config(layout="wide", page_title="LangGraph Chat Agent")
 st.markdown("""
 <style>
@@ -27,14 +28,8 @@ h1, h2, h3, h4, h5, h6 {
 """, unsafe_allow_html=True)
 # Initialize user settings database
 if "settings_db_initialized" not in st.session_state:
-    try: 
-        init_user_settings_db(db="chatbot.sqlite3")
-        st.session_state.settings_db_initialized = True
-        st.session_state.db_initialization_time = datetime.now()
-    except Exception as e:
-        st.error(f"Database initialization failed: {e}")
-        st.session_state.db_init_error = str(e)
-
+    init_user_settings_db(db="chatbot.sqlite3")
+    st.session_state.settings_db_initialized = True
 ########################### Start of Authentication ################################
 with open('config.yaml', 'r', encoding='utf-8') as file:
     cred = yaml.load(file, Loader=SafeLoader)
@@ -48,7 +43,7 @@ authenticator = stauth.Authenticate(
 )
 
 if st.session_state["authentication_status"] is False:
-    st.error('Username/password is incorrect')
+ st.error('Username/password is incorrect')
 elif st.session_state["authentication_status"] is None:
     try:
         authenticator.login(location = "sidebar",clear_on_submit = True)
@@ -208,16 +203,22 @@ elif st.session_state["authentication_status"]:
     ########################### End of User API Settings ################################
 
     ########################### Start of Web Search Settings ################################
-    with st.sidebar.expander("🔍 Web Search Settings", expanded=False):
-        # Web search toggle
-        web_search_enabled = st.checkbox(
-            "Enable Web Search",
-            value=st.session_state.get("web_search_enabled", False),
-            help="Allow the assistant to search the web for current information"
+    with st.sidebar.expander("🔍 Search Settings", expanded=False):
+        # Search mode radio buttons
+        search_mode = st.radio(
+            "Search Mode:",
+            options=["None", "Simple Search", "Deep Research"],
+            index=0,  # Default to "None"
+            help="Choose how the assistant should search for information"
         )
         
-        # Show additional options only if web search is enabled
-        if web_search_enabled:
+        # Initialize session state for search mode
+        st.session_state.search_mode = search_mode
+        
+        # Settings for Simple Search
+        if search_mode == "Simple Search":
+            st.markdown("##### Simple Search Settings")
+            
             # Search method radio buttons
             search_method = st.radio(
                 "Search Method:",
@@ -236,32 +237,69 @@ elif st.session_state["authentication_status"]:
             )
             
             # Update session state
-            st.session_state.web_search_enabled = web_search_enabled
+            st.session_state.web_search_enabled = True
             st.session_state.search_method_rag = (search_method == "RAG")
             st.session_state.num_results = num_results
-        else:
-            # Disable web search
+            st.session_state.deep_research_enabled = False
+            
+        # Settings for Deep Research
+        elif search_mode == "Deep Research":
+            st.markdown("##### Deep Research Settings")
+            
+            # Max iterations slider
+            max_iterations = st.slider(
+                "Research Iterations:",
+                min_value=5,
+                max_value=100,
+                step=5,
+                value=st.session_state.get("deep_research_iterations", 5),
+                help="Number of research iterations to perform"
+            )
+            
+            # Research depth info
+            st.info(f"""
+            Deep Research will:
+            - Generate multiple search queries
+            - Perform iterative searches
+            - Analyze and synthesize findings
+            - Provide comprehensive report with citations
+            """)
+            
+            # Update session state
+            st.session_state.web_search_enabled = False  # Disable simple search
+            st.session_state.deep_research_enabled = True
+            st.session_state.deep_research_iterations = max_iterations
+            
+        else:  # None selected
+            # Disable all search features
             st.session_state.web_search_enabled = False
+            st.session_state.deep_research_enabled = False
             st.session_state.search_method_rag = True
             st.session_state.num_results = 5
 
-    # Check if web search settings changed
-    web_search_settings_changed = False
-    if "last_web_search_settings" in st.session_state:
-        current_settings = {
-            "enabled": st.session_state.web_search_enabled,
-            "rag": st.session_state.search_method_rag,
-            "num_results": st.session_state.num_results
-        }
-        if st.session_state.last_web_search_settings != current_settings:
-            web_search_settings_changed = True
-            st.session_state.last_web_search_settings = current_settings
-    else:
-        st.session_state.last_web_search_settings = {
-            "enabled": st.session_state.web_search_enabled,
-            "rag": st.session_state.search_method_rag,
-            "num_results": st.session_state.num_results
-        }
+        # Check if search settings changed
+        search_settings_changed = False
+        if "last_search_settings" in st.session_state:
+            current_settings = {
+                "mode": st.session_state.search_mode,
+                "web_enabled": st.session_state.get("web_search_enabled", False),
+                "deep_enabled": st.session_state.get("deep_research_enabled", False),
+                "rag": st.session_state.get("search_method_rag", True),
+                "num_results": st.session_state.get("num_results", 5),
+                "deep_iterations": st.session_state.get("deep_research_iterations", 3)
+            }
+            if st.session_state.last_search_settings != current_settings:
+                search_settings_changed = True
+            st.session_state.last_search_settings = current_settings
+        else:
+            st.session_state.last_search_settings = {
+                "mode": st.session_state.search_mode,
+                "web_enabled": st.session_state.get("web_search_enabled", False),
+                "deep_enabled": st.session_state.get("deep_research_enabled", False),
+                "rag": st.session_state.get("search_method_rag", True),
+                "num_results": st.session_state.get("num_results", 5),
+                "deep_iterations": st.session_state.get("deep_research_iterations", 3)
+            }
     ########################### End of Web Search Settings ################################
 
 
@@ -293,10 +331,10 @@ elif st.session_state["authentication_status"]:
 
     from graph import create_graph
     # Create graph if not exists or if API settings changed
-    if  "app" not in st.session_state or \
+    if "app" not in st.session_state or \
         "last_api_settings" not in st.session_state or \
         st.session_state.last_api_settings != st.session_state.user_api_settings or \
-        web_search_settings_changed:
+        search_settings_changed:
 
         st.session_state.app, st.session_state.checkpointer = create_graph(
             model=st.session_state.user_api_settings["model"],
@@ -307,7 +345,9 @@ elif st.session_state["authentication_status"]:
             user_id=st.session_state.user_id,
             web_search_enabled=st.session_state.get("web_search_enabled", False),
             search_method_rag=st.session_state.get("search_method_rag", True),
-            num_results=st.session_state.get("num_results", 5)
+            num_results=st.session_state.get("num_results", 5),
+            deep_research_enabled=st.session_state.get("deep_research_enabled", False),
+            deep_research_iterations=st.session_state.get("deep_research_iterations", 3)
         )
         st.session_state.last_api_settings = st.session_state.user_api_settings.copy()
         st.info("LangGraph app compiled with updated settings.")
@@ -378,7 +418,6 @@ elif st.session_state["authentication_status"]:
 
 
     # --- Main Chat Interface ---
-    st.title("🤖 LangGraph Powered Chat")
 
     if st.session_state.thread_id:
         st.markdown(f"**Current Thread ID:** `{st.session_state.thread_id}`")
@@ -423,6 +462,9 @@ elif st.session_state["authentication_status"]:
                                                     if 'search' in tool_name.lower():
                                                         query = tool_args.get('query', 'information')
                                                         log_msg = f"🔍 Searching web for: {query[:50]}..."
+                                                    elif 'deep_research' in tool_name.lower():
+                                                        topic = tool_args.get('topic', 'topic')
+                                                        log_msg = f"🔬 Performing deep research on: {topic[:50]}..."
                                                     elif 'memory' in tool_name.lower():
                                                         if 'manage' in tool_name.lower():
                                                             log_msg = "🧠 Storing information in memory"
@@ -433,16 +475,6 @@ elif st.session_state["authentication_status"]:
                                                     
                                                     st.write(log_msg)
                                                     step_logs.append(log_msg)
-                                            
-                                            elif hasattr(last_message, 'content') and last_message.content:
-                                                log_msg = "💭 Generating response..."
-                                                st.write(log_msg)
-                                                step_logs.append(log_msg)
-                                
-                                elif node_name == "summarize_conversation":
-                                    log_msg = "📝 Summarizing conversation"
-                                    st.write(log_msg)
-                                    step_logs.append(log_msg)
 
                     # Update status to complete
                     status.update(label="✅ Complete!", state="complete")

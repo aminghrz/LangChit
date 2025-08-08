@@ -1,18 +1,15 @@
 from langchain_core.messages import AIMessage, SystemMessage, BaseMessage, HumanMessage
-from langchain_core.tools import tool
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_openai import ChatOpenAI
 from langmem import create_manage_memory_tool, create_search_memory_tool
 
-from typing import Literal, List, Dict
+from typing import Literal, List
 import streamlit as st
 from datetime import datetime
-from ddgs import DDGS
-import requests
-from readability import Document
-from bs4 import BeautifulSoup
+from deep_research_tool import create_deep_research_tool
+from web_tools import create_search_web_tool, fetch_url_content
 
 # Add State class definition
 class State(MessagesState):
@@ -98,7 +95,9 @@ def should_continue(state) -> Literal["summarize_conversation", END]: # type: ig
         return "summarize_conversation"
     return END
 
-def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enabled=False, search_method_rag=True, num_results=5):
+def create_graph(model, api_key, base_url, conn, store, user_id, 
+                 web_search_enabled=False, search_method_rag=True, num_results=5,
+                 deep_research_enabled=False, deep_research_iterations=5):
     """Create and compile the LangGraph workflow"""
     
     # Initialize models
@@ -109,80 +108,6 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
         base_url=base_url
     )
     
-    # Create web search tool
-    @tool
-    def search_web(query: str, timelimit: Literal["d", "w", "m", "y"] = "w") -> str:
-        """Search the web for information about a topic.
-        
-        Args:
-            query: The search query
-            timelimit: Time limit - "d" (day), "w" (week), "m" (month), "y" (year)
-        
-        Returns:
-            Search results from the web
-        """
-        results = DDGS().text(query, max_results=num_results,
-                            timelimit=timelimit,
-                            )
-        timestamp = datetime.now().isoformat()
-        namespace = ("web_search", user_id)
-
-        for i, result in enumerate(results):
-            key = f"{query}_{timestamp}_{i}"
-            value = {
-                "query": query,
-                "title": result.get("title", ""),
-                "href": result.get("href", ""),
-                "body": result.get("body", ""),
-                "timestamp": timestamp,
-                "text": f"{result.get('title', '')} {result.get('body', '')}"
-            }
-            # Store with indexing for vector search
-            store.put(
-                namespace=namespace,
-                key=key,
-                value=value,
-                index=["text"]  # Index the text field for vector search
-            )
-        if search_method_rag:
-            final_results = store.search(
-            namespace,
-            query=query,
-            limit=1
-            )
-        else:
-            final_results = results
-
-        return final_results
-    
-    @tool
-    def fetch_url_content(urls: List[str], timeout: int = 10) -> List[Dict[str, str]]:
-        """
-        Fetch and extract the main text and title from each URL.
-
-        Args:
-            urls: A list of page URLs to retrieve.
-            timeout: HTTP timeout in seconds.
-
-        Returns:
-            A list of dicts with keys: 'url', 'title', 'content'.
-        """
-        results = []
-        for url in urls:
-            try:
-                resp = requests.get(url, timeout=timeout)
-                resp.raise_for_status()
-                doc = Document(resp.text)
-                title = doc.title()
-                html = doc.summary()
-                soup = BeautifulSoup(html, 'html.parser')
-                text = soup.get_text(separator='\n').strip()
-                results.append({"url": url, "title": title, "content": text})
-            except Exception as e:
-                # Optionally include an error field:
-                results.append({"url": url, "error": str(e)})
-        return results
-
     # Create memory tools
     manage_memory_tool = create_manage_memory_tool(
         store=store, 
@@ -197,9 +122,26 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
     
     # Build tools list
     tools = [manage_memory_tool, search_memory_tool, fetch_url_content]
+    
+    # Add web search tool if enabled
     if web_search_enabled:
-        tools.append(search_web)
+        search_web_tool = create_search_web_tool(
+            store=store,
+            user_id=user_id,
+            num_results=num_results,
+            search_method_rag=search_method_rag
+        )
+        tools.append(search_web_tool)
 
+    # Add deep research tool if enabled
+    if deep_research_enabled:
+        deep_research_tool = create_deep_research_tool(
+            model=model, 
+            api_key=api_key, 
+            base_url=base_url,
+            default_iterations=deep_research_iterations
+        )
+        tools.append(deep_research_tool)
     # Base prompt
     prompt_content = (
         "You are a helpful assistant with memory capabilities. "
@@ -217,6 +159,15 @@ def create_graph(model, api_key, base_url, conn, store, user_id, web_search_enab
             f"Decide on the timelimit argument based on the query of the user. Try to get updated results "
             f"based on the current datetime (which is {datetime.now()}). "
             "use the fetch_url_content tool to retrieve full page contents if you need to get more information a single or multiple pages from the web pages you got from web search results"
+        )
+
+    if deep_research_enabled:
+        prompt_content += (
+            " For complex research questions that require comprehensive analysis, use the deep_research tool. "
+            "This tool performs iterative searches and provides detailed reports with citations. "
+            "Use it when the user asks for in-depth information, detailed research, comprehensive analysis, "
+            "or when they explicitly ask for 'deep research' on a topic. The tool will handle all the searching "
+            "and synthesis automatically, returning a complete report."
         )
 
     # Create react agent
