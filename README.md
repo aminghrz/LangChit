@@ -1,107 +1,107 @@
-# Customizable and portable LangGraph Streamlit UI with Persistent Memory
+# 🦾🤖 LangChit: A LangGraph Streamlit Chat Experience
 
-A full-featured Streamlit chat application powered by LangGraph with persistent memory capabilities, user authentication, and web search integration.
+_A full-featured, persistent, web-integrated Streamlit chat app built on LangGraph._
 
-![Chat Interface](/img/1.png)
-![Chat Interface](/img/2.png)
-![Chat Interface](/img/3.png)
+LangChit is a robust, user-friendly chat application—taking Streamlit and LangGraph to the next level. Built for power users, enthusiasts, and anyone who wants more from their chat interface. Includes long-term memory, and power-user control, LangChit offers features far beyond basic agent UIs—web page retrieval, local Deep Research inspired by Google Gemini, and more.
 
-## Overview
+<sup>**Based on the [langgraph-streamlit-chat-interface](https://github.com/aminghrz/langgraph-streamlit-chat-interface), now with advanced multi-user and research features.**</sup>
 
-This is a general-purpose Streamlit chat interface for serving LangGraph agents with advanced memory management and web search capabilities. The graph architecture can be easily modified or replaced with <ins>**YOUR CUSTOM IMPLEMENTATION**</ins>, making it perfect for testing or providing chat services.
+---
 
-## Features
+## Screenshot Gallery
 
-### 🧠 **Dual-Layer Memory System**
-1. **Thread-level Memory**: Persistent conversation memory using SQLite as checkpointer
-2. **User-level Memory**: Cross-thread persistent memory using [SqliteVecStore](https://github.com/aminghrz/langmem-sqlite-vec) for vector storage
+**Login and user management**
+![Login Screen](/img/Login.jpg)
 
-### 💾 **Zero-Setup Persistence**
-- No external database setup required
-- Creates a single SQLite database for both checkpointer and vector store
-- Automatic database initialization
+**Deep memory & threading**
+![Persistent Memory](/img/Memory.jpg)
 
-### 🔄 **Smart Context Management**
-- Generates conversation summaries after 3 rounds (based on 10 previous messages)
-- Reduces token consumption in long threads while maintaining context
-- Summary stored in checkpointer for persistence
+**Webpage retrieval, including JS-powered content**
+![Webpage Retrieval (JS enabled)](/img/JS_page_retrieval.jpg)
 
-### 🔐 **User Management**
-- Built-in authentication system
-- User-specific thread access
-- Secure session management
-- Sign-up for new users
+**Integrated web search**
+![Web Search](/img/Search.jpg)
 
-### 💬 **Thread Management**
-- Multiple conversation threads per user
-- Thread selection and creation interface
-- Complete message history preservation
+**Gemini-style Deep Research Mode**
+![Deep Research](/img/Deep_Reseaech.jpg)
 
-### ⚡ **Real-time Updates**
-- Live memory updates (both checkpointer and vector store)
-- Streaming responses
-- Dynamic UI updates
+---
 
-### 🔑 **User API Key & Endpoint Management**
-- Each user can securely enter their own API key and Base URL for any OpenAI-compatible provider
-- Credentials are stored only once per user in the same SQLite database as the store and checkpointer
-- Enables flexible use of different LLM providers per user
-- API provider model selection
+## Why LangChit?
 
-### 🔍 **Web Search Integration** (NEW)
-- **Toggle Web Search**: Enable/disable web search functionality on demand
-- **DuckDuckGo Integration**: Privacy-focused web search using the `ddgs` library
-- **Dual Search Modes**:
-  - **RAG Mode**: Stores search results as embeddings and uses vector search to find the most relevant information
-  - **Direct Mode**: Passes all search results directly to the LLM for processing
-- **Configurable Results**: Adjustable number of search results (1-10) via slider
-- **Persistent Web Search Memory**: Search results are stored in a separate namespace (`web_search`) for future reference
-- **Dynamic Graph Rebuilding**: The agent graph automatically rebuilds when web search settings change
+LangChit is for users and researchers who need:
+- **Persistent, context-rich chat** – Memory at both thread and user level, always ready to continue your work.
+- **Powerful online research** – Live web search and contextual retrieval, plus automatic in-depth research tools inspired by cutting-edge LLM frameworks.
+- **Web content extraction & retrieval** – From static sites to dynamic JavaScript-driven pages.
+- **Multi-user control and security** – Built-in authentication, per-user data, and secure API vault.
 
-## Architecture
+---
 
-The application uses a LangGraph workflow with the following components:
+## Key Features
 
-- **ReAct Agent**: Handles conversation logic with memory and web search tools
-- **Memory Tools**: Powered by langmem for storing and retrieving user memories
-- **Web Search Tool**: DuckDuckGo integration for current information retrieval
-- **Summarization Node**: Automatically creates conversation summaries
-- **SQLite Persistence**: Triple storage for checkpoints, vector embeddings, and web search results
+### 🧠 Intelligent, Persistent Memory
+- _Thread-level:_ Each chat thread’s memory/history, checkpointed with SQLite.
+- _User-level:_ Long-term, cross-thread memory. Uses [SqliteVecStore](https://github.com/aminghrz/langmem-sqlite-vec) for scalable vector storage.
 
-## Installation
+### 🔄 Live Summaries & Efficient Context
+- Automatic conversation summarization after every few messages—optimizes LLM context window usage.
 
-1. Clone the repository:
-```bash
-git clone https://github.com/aminghrz/langgraph_streamlit_UI.git
-cd langgraph_streamlit_UI
-```
+### 🔑 API & Model Flexibility
+- Each user can securely set and store their own LLM API key and endpoint (one-time), works with any OpenAI-compatible provider.
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+### 🧑‍💼 Multi-User, Multi-Thread
+- Users can sign up, log in, and manage multiple chat threads—with all memory saved, per user.
 
-3. Add [SqliteVecStore](https://github.com/aminghrz/langmem-sqlite-vec) to your directory.
+### 🔎 Web Search & Retrieval (Advanced)
+- **Integrated Private Web Search:** Privacy-focused DuckDuckGo search (via `ddgs`)—toggle on/off per user.
+- **Retrieval Modes:** 
+  - **RAG (Retrieval-Augmented Generation):** Embeds search results for LLM-optimized context.
+  - **Direct Mode:** Directly feeds results to the LLM.
+- **Results Control:** Slider for number of search results.
+- **Persistent Web Search Memory:** All findings saved in a dedicated search memory namespace.
+- **On-the-fly Reconfiguration:** Toggling search options triggers an automatic update to the agent graph.
 
-4. Run the application:
-```bash
-streamlit run app.py
-```
-5. Sign-up and/or sign-in using the widgets.
+### 🌐 Webpage Retrieval (Including Dynamic JavaScript Pages)
+- **Built-in URL-based retrieval:** Enter a webpage and LangChit will attempt detailed extraction, including rendering JavaScript with headless browser tech.
+- **Research assistant integration:** Perfect for news, blog, or academic content.
 
-6. Set up your OpenAI API key: 
-Only one time, insert your OpenAI compatible API endpoint token and URL after sign-up/sign-in in the sidebar widget. Change anytime you want.
+### 🔬 Gemini-Style Deep Research Tool
+- **Not just a “web search” button:** LangChit includes a Deep Reasearch tool inspired by [Google’s Gemini Fullstack LangGraph Quickstart](https://github.com/google-gemini/gemini-fullstack-langgraph-quickstart), orchestrating a workflow for in-depth context gathering and synthesis.
+- You can have Deep Research in your local machine with any model you want from any procider. 
 
-7. Configure web search (optional):
-   - Toggle "Enable Web Search" in the sidebar
-   - Choose between RAG or Direct search methods
-   - Adjust the number of results with the slider
+### 🔐 Secure, Ready-to-Use Authentication
+- Credential management, hashed passwords, session handling, and per-user data isolation.
 
-You're all set!
+---
+
+## Quickstart
+
+1. **Clone this repo**
+   ```bash
+   git clone https://github.com/aminghrz/LangChit.git
+   cd LangChit
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Add [SqliteVecStore](https://github.com/aminghrz/langmem-sqlite-vec) to your directory.**
+
+4. **Prepare `config.yaml` for authentication (see below).**
+
+5. **Run the app**
+   ```bash
+   streamlit run app.py
+   ```
+
+---
 
 ## Authentication Setup
 
-Create a `config.yaml` file containing your users information in the format below:
+Create a `config.yaml` file:
+
 ```yaml
 credentials:
   usernames:
@@ -110,76 +110,59 @@ credentials:
       first_name: Your
       last_name: Name
       password: pass
-      roles: [admin, editor, viewer]
+      roles: [admin]
 cookie:
   expiry_days: 30
   key: your_secret_key
   name: your_cookie_name
 ```
-Remember that passwords will be hashed everytime the user information is saved. You can change the password in .yaml file anytime you want.
+_Passwords will be hashed on save._  
+_Edit YAML and restart to reset._
 
-### Graph Customization
-The LangGraph workflow can be easily modified in the graph definition section. Key components:
-
-- `call_model()`: Main conversation handler
-- `summarize_conversation()`: Summary generation logic
-- `should_continue()`: Conditional logic for triggering summarization
-- `search_web()`: Web search tool implementation
-
-You can add your nodes, tools, conditional edges and graph (workflow) in graph.py.
-Just keep the logic, and you will be good to go.
+---
 
 ## Usage
 
-1. **Login**: Use the sidebar authentication
-2. **Sign-up**: Sign-up using the widget in first page
-3. **Configure API**: Set your OpenAI-compatible API key and base URL
-4. **Enable Web Search** (optional): 
-   - Toggle web search in the sidebar
-   - Select RAG for semantic search or Direct for full results
-   - Set the number of results to retrieve
-5. **Create Thread**: Click "➕ New Thread" to start a new conversation
-6. **Switch Threads**: Select from existing threads in the dropdown
-7. **Chat**: Type messages in the chat input
-8. **View Summary**: Expand the conversation summary when available
+1. **Sign up or sign in**
+2. **(One time) Enter your LLM API key and endpoint in the sidebar**
+3. **Enable web search, deep research, or webpage retrieval via sidebar toggles**
+4. **Create/select threads, chat, and see summaries build automatically**
+5. **Retrieve and synthesize fresh web content as you go**
 
-### Web Search Usage Examples
-- "Search the web for the latest news about AI"
-- "Who is currently the president of the USA?"
-- "Find information about climate change solutions"
+---
 
 ## Dependencies
 
-- `streamlit`: Web interface
-- `langgraph`: Graph-based agent framework
-- `langchain-openai`: OpenAI integration
-- `langmem`: Memory management tools
-- `streamlit-authenticator`: User authentication
-- `sqlite-vec`: Vector storage (For SqliteVecStore)
-- `ddgs`: DuckDuckGo search integration
-- [`SqliteVecStore`](https://github.com/aminghrz/langmem-sqlite-vec): For persistent long-term memory
+- `streamlit`
+- `langgraph`
+- `langchain-openai`
+- `langmem` + [`sqlite-vec`](https://github.com/aminghrz/langmem-sqlite-vec) (for persistent memory layers)
+- `streamlit-authenticator`
+- `ddgs` (DuckDuckGo search)
+- Headless browser (for JS retrieval; see requirements.txt)
 
-## ⚠️ Important Warnings
+---
 
-### Scalability
-- **This is not production-ready for heavy loads**
-- For production deployments, consider:
-  - PostgreSQL instead of SQLite for the checkpointer
-  - pgvector for vector storage
-  - Proper connection pooling
-  - Load balancing
-  - Error handling and logging
+## ⚠️ Note: For Research and Prototyping Use
 
-### Performance
-- Monitor token usage with long conversations (Use [LangFuse](https://langfuse.com/))
-- Consider adjusting summary triggers based on your use case
-- Implement rate limiting for production use
-- Web search results add to token consumption - use RAG mode for efficiency
+Not production-scale. For production, upgrade to a robust DB (Postgres/pgvector), use proper connection pooling, logging, rate limiting, and host securely.
+
+---
+
+## Credits & Inspiration
+
+- Built on [langgraph-streamlit-chat-interface](https://github.com/aminghrz/langgraph-streamlit-chat-interface)
+- Deep research: inspired by [Google Gemini Fullstack LangGraph Quickstart](https://github.com/google-gemini/gemini-fullstack-langgraph-quickstart)
+- Memory in SQLite: [langmem-sqlite-vec](https://github.com/aminghrz/langmem-sqlite-vec) 
+
+---
+
+## License
+
+MIT
+
+---
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+Pull requests and forks welcome. Issues? [File them here](https://github.com/aminghrz/LangChit/issues).
